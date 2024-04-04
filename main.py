@@ -1,7 +1,7 @@
 import sqlite3
 import yaml
 import re
-from itertools import tee, islice, chain
+from itertools import tee, chain
 from string import Template
 from datetime import datetime
 from pathlib import Path
@@ -41,20 +41,11 @@ def get_raw_cmds(query_res, regex, script_tpl):
     ''' Gets the query results in the form of a list of tuples, applies the regex to the message
         and writes the corresponding script lines into tupple
     '''
-    q_lines = []
-    
-    # for queries that have multiple occurances
-    for entry in query_res:
-        id = entry[0]
-        time = entry[1]
-        msg = entry[3]
 
-        if regex:
-            m = re.search(regex, msg)
-            if m:
-                q_lines.append([id, time, script_tpl.replace('<ARG>', m.group(0))])
-
-    return q_lines
+    return [
+        [column[0], column[1], script_tpl.replace('<ARG>', re.search(regex, column[3]).group(0))]
+        for column in query_res if regex and re.search(regex, column[3])
+    ]
 
 def previous_and_next(some_iterable):
     prevs, items = tee(some_iterable, 2)
@@ -71,20 +62,15 @@ def get_commands(config, db_path):
     delay_value = str(config[0]['config']['delay']['value'])
 
     # Get all script cmds
-    script_cmds = []
-    for q in config[1:]:
-        query = q['query']
-        script_cmds.extend(
-            get_raw_cmds(
-                db.query(query['sql']),
-                query['regex'],
-                query['script'])
-            )
+    script_cmds = [cmd for q in config[1:] for cmd in get_raw_cmds(
+        db.query(q['query']['sql']),
+          q['query']['regex'],
+          q['query']['script'])]
 
     # Sort cmds by Id - ensure cmd order is respected
     script_cmds.sort(key=lambda tup: tup[0])
 
-    # Adds delays
+    # Adds relative delays between commands
     i = 0
     for prev, curr in previous_and_next(script_cmds):
         if prev:
@@ -93,7 +79,7 @@ def get_commands(config, db_path):
         else:
             script_cmds[i][2] = curr[2].replace('<DELAY>', '0').strip()
         i += 1
-    
+
     # Keep script lines only
     script_cmds_only = [cmd[2] for cmd in script_cmds]
 
