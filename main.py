@@ -9,9 +9,12 @@ from pathlib import Path
 class DataBase:
     def __init__(self, database_file):
         try:
-            self.conn = sqlite3.connect(database_file)
-            self.cursor = self.conn.cursor()
-            print("Successfully connected to the database.")
+            if database_file.exists():
+                self.conn = sqlite3.connect(database_file)
+                self.cursor = self.conn.cursor()
+                print("Successfully connected to the database.")
+            else:
+                print("Error - DB path is wrong: {database_file}")
         except sqlite3.Error as e:
             print("Error connecting to the database:", e)
     
@@ -23,11 +26,14 @@ class DataBase:
     def query(self, query):
         return self.cursor.execute(query).fetchall()
 
-def load_config():
+def load_config(path):
     try:
-        with open(f"config.yml", "r") as yamlfile:
+        with open(f"{path}/config.yml", "r") as yamlfile:
             config = yaml.load(yamlfile, Loader=yaml.FullLoader)
-            return config
+            db_path = Path(f"{path}/{config[0]['config']['database']['path']}")
+            srpt_path = Path(f"{path}/{config[0]['config']['template']['path']}")
+            return config, db_path, srpt_path
+        
     except Exception as e:
         print(f"Unable to load file: \n {e}")
 
@@ -55,19 +61,18 @@ def previous_and_next(some_iterable):
     prevs = chain([None], prevs)
     return zip(prevs, items)
 
-def get_clean_cmds(yaml):
-
-    # Get configuration
-    db_path = yaml[0]['config']['database']['path']
-    delay_mode = yaml[0]['config']['delay']['mode'].lower()
-    delay_value = str(yaml[0]['config']['delay']['value'])
+def get_commands(config, db_path):
 
     # Load database
     db = DataBase(db_path)
-    
+
+    # Get generation config
+    delay_mode = config[0]['config']['delay']['mode'].lower()
+    delay_value = str(config[0]['config']['delay']['value'])
+
     # Get all script cmds
     script_cmds = []
-    for q in yaml[1:]:
+    for q in config[1:]:
         query = q['query']
         script_cmds.extend(
             get_raw_cmds(
@@ -90,20 +95,19 @@ def get_clean_cmds(yaml):
         i += 1
     
     # Keep script lines only
-    i = 0
-    for cmd in script_cmds:
-        script_cmds[i] = cmd[2]
-        i +=1
+    script_cmds_only = [cmd[2] for cmd in script_cmds]
 
-    return script_cmds
+    return script_cmds_only
 
-def write_script():
+def write_script(path):
 
     start = datetime.now()
-    yaml = load_config()
-    db_path = yaml[0]['config']['database']['path']
-    script_tlp_path = Path(yaml[0]['config']['template']['path'])
-    script_cmds = get_clean_cmds(yaml)
+
+    # Load yaml config from data folder and paths
+    config, db_path, srpt_path = load_config(path)
+
+    # Get script commands
+    script_cmds = get_commands(config, db_path)
 
     # Write replacer dictonary
     d = {
@@ -112,13 +116,16 @@ def write_script():
         'cmd_list': '\n\n'.join(script_cmds)
     }
 
-    with open(script_tlp_path, 'r') as f:
+    # Open template script and write to string
+    print(srpt_path)
+    with open(srpt_path, 'r') as f:
         src = Template(f.read())
         result = src.substitute(d)
         f.close()
         print(f'Generated script: \n{result}')
     
-    output_file = f"script-{start.strftime("%d.%m.%Y-%H.%M.%S")}{script_tlp_path.suffix}"
+    # Open output script and write string to file
+    output_file = f"script-{start.strftime("%d.%m.%Y-%H.%M.%S")}{srpt_path.suffix}"
     with open(output_file, "a") as f:
         f.write(result)
         print(f'Saved script to {output_file}')
@@ -128,4 +135,11 @@ def write_script():
     print(f"Elapsed time: {end-start}")
 
 if __name__ == "__main__":
-    write_script()
+
+    # Build path
+    rel_path = Path("data/")
+    if not rel_path.exists():
+        rel_path = Path("example_data/")
+        print("Data directory does not exist. Using example data.")
+
+    write_script(rel_path)
