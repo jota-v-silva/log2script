@@ -1,54 +1,10 @@
-import sqlite3
 import yaml
 import re
-from itertools import tee, chain
 from string import Template
 from datetime import datetime
 from pathlib import Path
-
-class DataBase:
-    def __init__(self, database_file, table_name, man_fields):
-
-        # Class variables
-        self.table_name = table_name
-        self.man_fields = man_fields
-        self.conn = None
-        self.cursor = None
-
-        try:
-            if database_file.exists():
-                self.conn = sqlite3.connect(database_file)
-                self.cursor = self.conn.cursor()
-                print("Successfully connected to the database.")
-                if not self.__check_table_schema():
-                    print('Table schema does not have all mandatory fields')
-                    raise sqlite3.Error
-            else:
-                print(f"Error - DB path is wrong: {database_file}")
-                raise sqlite3.Error
-        except sqlite3.Error as e:
-            print("Error connecting to the database.", e)
-            exit(1)
-    
-    def __del__(self):
-        if self.cursor:
-            self.cursor.close()
-            self.conn.close()
-            print("Database connection closed.")
-
-    def __check_table_schema(self):
-        ''' Check mandatory fields exist in the table
-        '''
-        schema = self.query(f"PRAGMA table_info({self.table_name})")
-        existing_fields = [field for schema_tuple in schema for field in self.man_fields if field in schema_tuple]
-
-        if sorted(self.man_fields) == sorted(existing_fields):
-            return True
-        else:
-            return False
-    
-    def query(self, query):
-        return self.cursor.execute(query).fetchall()
+from sqlite import Sqlite
+from utils import previous_and_next
 
 def load_config(path):
     try:
@@ -65,23 +21,17 @@ def get_raw_cmds(query_res, regex, script_tpl):
     ''' Gets the query results in the form of a list of tuples, applies the regex to the message
         and writes the corresponding script lines into tupple
     '''
-
     return [
         [column[0], column[1], script_tpl.replace('<ARG>', re.search(regex, column[3]).group(0))]
         for column in query_res if regex and re.search(regex, column[3])
     ]
-
-def previous_and_next(some_iterable):
-    prevs, items = tee(some_iterable, 2)
-    prevs = chain([None], prevs)
-    return zip(prevs, items)
 
 def get_commands(config, db_path):
 
     # Load database
     db_name = config[0]['config']['database']['table_name']
     mandatory_fields = config[0]['config']['database']['mandatory_fields']
-    db = DataBase(db_path, db_name, mandatory_fields)
+    db = Sqlite(db_path, db_name, mandatory_fields)
 
     # Get generation config
     delay_mode = config[0]['config']['delay']['mode'].lower()
