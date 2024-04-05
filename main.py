@@ -6,7 +6,9 @@ from pathlib import Path
 from sqlite import Sqlite
 from utils import previous_and_next
 
-def load_config(path):
+def load_config(path: Path):
+    ''' Gets path to config folder and loads yaml data structure.
+    '''
     try:
         with open(f"{path}/config.yml", "r") as yamlfile:
             config = yaml.load(yamlfile, Loader=yaml.FullLoader)
@@ -17,7 +19,7 @@ def load_config(path):
     except Exception as e:
         print(f"Unable to load file: \n {e}")
 
-def get_raw_cmds(query_res, regex, script_tpl):
+def get_raw_cmds(query_res: list, regex: str, script_tpl: str) -> tuple:
     ''' Gets the query results in the form of a list of tuples, applies the regex to the message
         and writes the corresponding script lines into tupple
     '''
@@ -26,16 +28,34 @@ def get_raw_cmds(query_res, regex, script_tpl):
         for column in query_res if regex and re.search(regex, column[3])
     ]
 
-def get_commands(config, db_path):
+def get_commands(config, db_path: Path) -> list:
+    ''' This function generates the script commands. It queries the dabatase, applies the corresponding
+        regex and writes the result in to the script command   
+
+        Parameters:
+                - config: the yaml data structure
+                - db_path: relative path to the db file
+        
+        Synopsis:
+            This function does the following:
+                - Load database class
+                - For each query in the db, run the corresponding query and get the script command
+                - Order command list by field in query tuple(0) - usually the log entry id
+                - Compute the delay between commands - if ihnerited computes the diference in time
+                between the current command and the previous using the time stamps and writes it into
+                the <DELAY> key in the script
+                - Removes unessessary fiels from the commands list - keeps only the script
+    '''
 
     # Load database
-    db_name = config[0]['config']['database']['table_name']
-    mandatory_fields = config[0]['config']['database']['mandatory_fields']
+    config_z = config[0]['config']
+    db_name = config_z['database']['table_name']
+    mandatory_fields = config_z['database']['mandatory_fields']
     db = Sqlite(db_path, db_name, mandatory_fields)
 
     # Get generation config
-    delay_mode = config[0]['config']['delay']['mode'].lower()
-    delay_value = str(config[0]['config']['delay']['value'])
+    delay_mode = config_z['delay']['mode'].lower()
+    delay_value = str(config_z['delay']['value'])
 
     # Get all script cmds
     script_cmds = [cmd for q in config[1:] for cmd in get_raw_cmds(
@@ -61,12 +81,26 @@ def get_commands(config, db_path):
 
     return script_cmds_only
 
-def write_script(path):
+def write_script(dir_path: Path) -> None:
+    ''' This function implements the main steps of the application
+
+        Parameters:
+                - dir_path: relative path to config directory. The directory contains
+                the config.yml, db file and the script template
+        
+        Synopsis:
+            This function does the following:
+                - Load configuration from yaml
+                - Get commands from log into ordered list
+                - Build write dictonary - symbols to be replaces in the template script
+                - Open template and write file + commands to string
+                - Write string into output file
+    '''
 
     start = datetime.now()
 
     # Load yaml config from data folder and paths
-    config, db_path, srpt_path = load_config(path)
+    config, db_path, srpt_path = load_config(dir_path)
 
     # Get script commands
     script_cmds = get_commands(config, db_path)
