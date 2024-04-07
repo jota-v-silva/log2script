@@ -121,7 +121,7 @@ def write_script(dir_path: Path) -> None:
         print(f'Generated script: \n{result}')
     
     # Open output script and write string to file
-    output_file = f"script-{start.strftime("%d.%m.%Y-%H.%M.%S")}{srpt_path.suffix}"
+    output_file = f"{dir_path}/script-{start.strftime("%d.%m.%Y-%H.%M.%S")}{srpt_path.suffix}"
     with open(output_file, "a") as f:
         f.write(result)
         print(f'Saved script to {output_file}')
