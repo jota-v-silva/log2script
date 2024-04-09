@@ -1,4 +1,5 @@
 import yaml
+import os
 import re
 from string import Template
 from datetime import datetime
@@ -134,7 +135,7 @@ if __name__ == "__main__":
 
     # Build path
     rel_path = Path("data/")
-    if not rel_path.exists():
+    if not Path("data/config.yml").exists():
         rel_path = Path("example_data/")
         print("Data directory does not exist. Using example data.")
 
