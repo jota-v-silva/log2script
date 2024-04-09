@@ -23,10 +23,12 @@ def load_config(path: Path):
 def get_raw_cmds(query_res: list, regex: str, script_tpl: str) -> tuple:
     ''' Gets the query results in the form of a list of tuples, applies the regex to the message
         and writes the corresponding script lines into tupple
+
+        raw command tuple = (rowId, time, script)
     '''
     return [
-        [column[0], column[1], script_tpl.replace('<ARG>', re.search(regex, column[3]).group(0))]
-        for column in query_res if regex and re.search(regex, column[3])
+        [column[0], column[1], script_tpl.replace('<ARG>', re.search(regex, column[2]).group(0))]
+        for column in query_res if regex and re.search(regex, column[2])
     ]
 
 def get_commands(config, db_path: Path) -> list:
