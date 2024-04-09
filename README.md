@@ -3,7 +3,18 @@
 A very simple tool that parses an application log and writes a script from it. The main purpose of Log2Script is to generate a debug script from the application log. Currently it only supports logs written in the SQL format (i.e. *.db files), but it supports the generation of debug scripts in any scripting laguange.
 
 ## Quick start
+Copy your config data (`config.yml`, `*.db` and `template.`) to your home directory and run:
 
+```bash
+docker-compose up --build log2script
+```
+
+If you would like to modfiy the data path, update the compose.yaml:
+
+```yaml
+    volumes:
+      - <PATH_TO_DATA>:/data # Modify the mount path as needed. Destination path is always /data
+```
 
 ## How it works
 The file `config.yaml` defines the application specific details. The config struct defines the general info to allow the Log2Script to work:
@@ -39,7 +50,7 @@ The `config.yaml` allows for the definition of multiple "query" structures. This
         time.sleep(<DELAY>)
         app.set_input(<ARG>)
 ```
-The `sql` entry is the SQLite query to the log.db. Then per each line in the log matching the query, the Log2Script will run the regex and populate the `<ARG>` value in the script scetion. The `<DELAY>` is computed from the log message time stamp w.r.t the previous.
+The `sql` entry is the SQLite query to the log.db. Then per each line in the log matching the query, the Log2Script will run the regex and populate the `<ARG>` value in the script scetion. The `<DELAY>` is computed from the log message time stamp w.r.t the previous message.
 
 The script entries are written into script template using the key words `date`, `db_file` and `cmd_list`:
 ```groovy
@@ -57,7 +68,6 @@ The script entries are written into script template using the key words `date`, 
 // Generated section
 $cmd_list
 ```
-
 
 ## Todos
 * Add clean data example
