@@ -1,0 +1,11 @@
+
+services:
+  log2script:
+    build:
+      context: .
+      dockerfile: .devcontainer/dockerfile
+    image: log2script
+    container_name: log2script
+    volumes:
+      - ~/data:/data # Modify the mount path as needed. Destination path is always /data
+    entrypoint: ["python", "./main.py"]
