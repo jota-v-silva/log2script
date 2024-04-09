@@ -6,28 +6,17 @@
         path: template.groovy # relative path to template
         time_base: milliseconds # not used anywhere, just for reference
     database:
-        path: app_log.db # relative path to template
+        path: example.db # relative path to template
         table_name: LOG_MESSAGES
         mandatory_fields:
-            - messageId
             - simulationTime
-            - senderName
             - message
-
-- query:
-    description: "Gets the log base time"
-    seq: 1
-    sql: >
-        SELECT messageId, simulationTime/1E6, zuluTime/1E6, message
-        FROM LOG_MESSAGES WHERE message LIKE 'TimeKeeper service registered'
-    regex: 
-    script:
+            - senderName
 
 - query:
     description: "Identifies TC processed successfuly by the TcDecoder and writes command to inject TC directly"
-    seq: NA
     sql: >
-        SELECT messageId, simulationTime/1E6, zuluTime/1E6, message 
+        SELECT rowId, simulationTime, message 
         FROM LOG_MESSAGES WHERE senderName LIKE '%TcDecoder%' AND
         message LIKE '%TC segment received%'
     regex: '(?<=\breceived: \s).*'
@@ -37,9 +26,8 @@
 
 - query:
     description: "Identifies the breakpoint used and writes command to loads the breakpoint"
-    seq: 2
     sql: >
-        SELECT messageId, simulationTime/1E6, zuluTime/1E6, message
+        SELECT rowId, simulationTime, message
         FROM LOG_MESSAGES WHERE senderName LIKE 'Storer' AND
         message LIKE 'Loading breakpoint from file%'
     regex: '(?<=\bfile\s).*'
