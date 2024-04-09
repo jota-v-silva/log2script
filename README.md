@@ -1,6 +1,11 @@
-# Log2Script
+# log2script
 
-A very simple tool that parses an application log and writes a script from it. The main purpose of Log2Script is to generate a debug script from the application log. Currently it only supports logs written in the SQL format (i.e. *.db files), but it supports the generation of debug scripts in any scripting laguange.
+Log2Script is a straightforward utility designed to parse application logs and generate scripts from them. Its primary function is to produce a debug script based on the content of the application log. Currently, it exclusively handles logs in the SQL format (i.e., *.db files), but it's versatile enough to generate debug scripts in any scripting language.
+
+This tool has found application in two main scenarios:
+* [SIMULUS 10/11](https://sim.space-codev.org/)-based spacecraft simulators: Log2Script parses all telecommands and script interactions, compiling them into a Groovy script. This output script is used to replicate complex simulation scenarios.
+
+* Flask applications: For Flask-based applications, Log2Script parses all incoming requests, assembling them into a Python script. This script can then be used to reconstruct intricate sequences of requests.
 
 ## Quick start
 Copy your config data (`config.yml`, `*.db` and `template.`) to your home directory and run:
@@ -36,7 +41,7 @@ The file `config.yaml` defines the application specific details. The config stru
             - level
             - message
 ```
-The `config.yaml` allows for the definition of multiple "query" structures. This is the config section that allows you to define what needs to be parsed from the log and written into the debug script:
+The `config.yaml` allows for the definition of multiple "query" structures. This section allows you to define what needs to be parsed from the log and be written into the debug script:
 
 ```yaml
 - query:
